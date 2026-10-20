@@ -7,6 +7,9 @@ export function settledTaskStatus(status: 'running' | 'completed' | 'interrupted
   if (status === 'stopped' || status === 'interrupted') return status
   return resultCount >= total ? 'completed' : 'interrupted'
 }
+export function taskInterruptionReason(status: 'running' | 'completed' | 'interrupted' | 'stopped', reason?: string) {
+  return status === 'interrupted' ? reason || '中断原因未记录（历史任务）' : ''
+}
 
 export function modelPassSummary(results: TestResult[], modelId: string, caseCount: number, pricing?: { inputPerMillion?: number; outputPerMillion?: number }) {
   const modelResults = results.filter((result) => result.modelId === modelId)

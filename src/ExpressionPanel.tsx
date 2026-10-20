@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Copy, Play, Square } from 'lucide-react'
-import { parseTestCaseLists } from './automation'
+import { parseTestCaseLists, taskInterruptionReason } from './automation'
 import type { Model } from './automation'
 import { expressionCoachSource, expressionPerformance, runExpressionTest } from './expression'
 import type { ExpressionConfig, ExpressionResult } from './expression'
@@ -71,7 +71,7 @@ function read(): Saved {
     try { alive = Date.now() - Number(localStorage.getItem(heartbeatPrefix + task.id)) < 120000 } catch { /* no live owner */ }
     if (alive) return task
     changed = true
-    return { ...task, status: 'interrupted' as const }
+    return { ...task, status: 'interrupted' as const, error: task.error || '运行页面已关闭或失去响应，任务心跳过期' }
   })
   if (changed) memory = { ...memory, tasks }
   return memory
@@ -174,7 +174,7 @@ export function ExpressionPanel({ chats, models }: { chats: Chat[]; models: Mode
     } catch (error) {
       if (!controller.signal.aborted) changeTask(task.id, (current) => ({ ...current, error: error instanceof Error ? error.message : '测试失败' }))
     } finally {
-      changeTask(task.id, (current) => current.status !== 'running' ? current : { ...current, status: current.results.length === current.total && !current.error ? 'completed' : 'interrupted' })
+      changeTask(task.id, (current) => current.status !== 'running' ? current : { ...current, status: current.results.length === current.total && !current.error ? 'completed' : 'interrupted', error: current.results.length < current.total ? current.error || '任务提前结束，具体原因未记录' : current.error })
       clearInterval(timer)
       controllers.delete(task.id)
       try { localStorage.removeItem(heartbeatPrefix + task.id) } catch { /* storage may be disabled */ }
@@ -208,7 +208,7 @@ export function ExpressionPanel({ chats, models }: { chats: Chat[]; models: Mode
       <button className="automation-back" onClick={() => { setSelectedId(null); setCopyStatus('') }}><ArrowLeft size={14} /> 返回表达评估测试</button>
       <div className="automation-heading"><h2>{selected.title}</h2><span>{selected.results.length} / {selected.total} · {statusText(selected.status)}</span>{saveStatus}{selected.status === 'running' && <button className="automation-stop" onClick={() => stop(selected.id)}><Square size={14} /> 终止</button>}</div>
       <p>陪练：{models.find((model) => model.id === selected.config.coachModelId)?.name || selected.config.coachModelId} · 回复：{models.find((model) => model.id === selected.config.replyModelId)?.name || selected.config.replyModelId} · 测评：{models.find((model) => model.id === selected.config.assessmentModelId)?.name || selected.config.assessmentModelId} · {new Date(selected.startedAt).toLocaleString()}</p>
-      {selected.error && <p className="automation-case-error" role="alert">{selected.error}</p>}
+      {selected.status === 'interrupted' && <p className="automation-case-error" role="alert">中断原因：{taskInterruptionReason(selected.status, selected.error)}</p>}
       <div className="expression-summaries">{evaluationModelIds.map((id) => {
         const rows = results.filter((result) => result.evaluationModelId === id)
         const scored = rows.filter((result) => !result.error && result.score !== undefined)
@@ -247,6 +247,6 @@ export function ExpressionPanel({ chats, models }: { chats: Chat[]; models: Mode
     <div className="automation-case-lists"><label>测试内容<textarea disabled={busy} rows={8} value={config.contentList} onChange={(event) => update({ contentList: event.target.value })} placeholder="每行一条测试内容" /></label><label>测试目的<textarea disabled={busy} rows={8} value={config.purposeList} onChange={(event) => update({ purposeList: event.target.value })} placeholder="每行一条测试目的，与左侧逐行对应" /></label></div>
     {parsedCases.error && <p className="automation-case-error" role="status">{parsedCases.error}</p>}
     <div className="automation-actions"><button className="add-button" disabled={!ready || busy} onClick={() => void start()}><Play size={15} /> {busy ? '测试中…' : '开始测试'}</button></div>
-    <div className="automation-results"><h3>测试任务</h3><div className="automation-task-list">{saved.tasks.map((task) => <div className="automation-task-row" key={task.id}><button className="automation-task" onClick={() => { setSelectedId(task.id); setCopyStatus('') }}><strong>{task.title}</strong><span>{new Date(task.startedAt).toLocaleString()}</span><span>{task.results.length} / {task.total} · {statusText(task.status)}</span></button>{task.status === 'running' && <button className="automation-stop" onClick={() => stop(task.id)}><Square size={14} /> 终止</button>}</div>)}{!saved.tasks.length && <p>还没有表达评估任务。填写四个角色的模型和 Prompt 后开始测试。</p>}</div></div>
+    <div className="automation-results"><h3>测试任务</h3><div className="automation-task-list">{saved.tasks.map((task) => <div className="automation-task-row" key={task.id}><button className="automation-task" onClick={() => { setSelectedId(task.id); setCopyStatus('') }}><strong>{task.title}</strong><span>{new Date(task.startedAt).toLocaleString()}</span><span>{task.results.length} / {task.total} · {statusText(task.status)}</span>{task.status === 'interrupted' && <span>中断原因：{taskInterruptionReason(task.status, task.error)}</span>}</button>{task.status === 'running' && <button className="automation-stop" onClick={() => stop(task.id)}><Square size={14} /> 终止</button>}</div>)}{!saved.tasks.length && <p>还没有表达评估任务。填写四个角色的模型和 Prompt 后开始测试。</p>}</div></div>
   </section>
 }

@@ -1,6 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { settledTaskStatus, evaluationSystemPrompt, parseEvaluation, recoverEvaluationResult, previousCoachReply, requestWithRetry, runPanelCases } from './automation.ts'
+import { settledTaskStatus, taskInterruptionReason, evaluationSystemPrompt, parseEvaluation, recoverEvaluationResult, previousCoachReply, requestWithRetry, runPanelCases } from './automation.ts'
+
+test('interrupted tasks explain recorded failures and distinguish unknown legacy reasons', () => {
+  assert.equal(taskInterruptionReason('interrupted', '模型 A：连接超时'), '模型 A：连接超时')
+  assert.equal(taskInterruptionReason('interrupted', undefined), '中断原因未记录（历史任务）')
+  assert.equal(taskInterruptionReason('completed', '旧错误'), '')
+})
 
 test('parses the supplied type and analysis without imposing values', () => {
   assert.deepEqual(parseEvaluation('```json\n{"type":"自定义状态","analysis":"有依据"}\n```'), { type: '自定义状态', analysis: '有依据' })
