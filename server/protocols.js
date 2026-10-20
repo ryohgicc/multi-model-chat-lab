@@ -14,10 +14,18 @@ export function buildRequest(config, messages, systemPrompt) {
       },
     }
   }
-  const url = provider === 'custom' ? base.toString() : `${base.toString().replace(/\/+$/, '')}/${provider === 'anthropic' ? 'messages' : 'chat/completions'}`
+  const url = provider === 'custom' ? base.toString() : provider === 'jev' ? `${base.toString().replace(/\/+$/, '').replace(/\/v1$/i, '')}/typesafe/v1/systemone` : `${base.toString().replace(/\/+$/, '')}/${provider === 'anthropic' ? 'messages' : 'chat/completions'}`
   if (provider === 'anthropic') {
     return { url, headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: { model: modelId, max_tokens: 4096, stream, system: systemPrompt || undefined, messages: messages.map((m) => ({ role: m.role, content: m.content })) } }
   }
+  if (provider === 'jev') {
+    let questions
+    try { const template = JSON.parse(systemPrompt); questions = template?.questions || template } catch { throw new Error('JEV 的系统 Prompt 需填写包含 questions 的 JSON 对象。') }
+    if (!questions || typeof questions !== 'object' || Array.isArray(questions) || !Object.keys(questions).length) throw new Error('JEV 的系统 Prompt 需填写非空 questions JSON 对象。')
+    const state = messages.length === 1 ? messages[0].content : messages.map((message) => `${message.role === 'assistant' ? '助手' : '用户'}：${message.content}`).join('\n')
+    return { url, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: { model: modelId, state, questions } }
+  }
+
   return { url, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: { model: modelId, stream, ...(stream ? { stream_options: { include_usage: true } } : {}), messages: [...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []), ...messages] } }
 }
 
@@ -46,6 +54,7 @@ export function extractUsage(provider, data) {
 
 export function extractFinal(provider, data) {
   if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.message || '接口返回错误')
+  if (provider === 'jev') return typeof data === 'string' ? data : JSON.stringify(data)
   if (provider === 'gemini') return data.candidates?.[0]?.content?.parts?.filter((part) => typeof part.text === 'string' && !part.thought).map((part) => part.text).join('') || ''
   if (provider === 'anthropic') return data.content?.filter((part) => part.type === 'text').map((part) => part.text).join('') || ''
   const content = data.choices?.[0]?.message?.content

@@ -1,4 +1,8 @@
 node_modules/
 dist/
+data/
 .env*
+.dev.vars*
+.cloud-publish-token
+.cloud-publish-payload.json
 .DS_Store

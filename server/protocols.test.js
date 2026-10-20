@@ -45,3 +45,11 @@ test('Usage parser accepts OpenAI final or stream usage and Anthropic usage', ()
   assert.deepEqual(extractUsage('gemini', { usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 } }), { input: 12, output: 8, total: 20 })
   assert.equal(extractUsage('custom', { choices: [] }), null)
 })
+
+test('JEV maps prompt questions and conversation state without chat fields', () => {
+  const questions = { department: { type: 'choice', instructions: '选择团队', criteria: { technical: '连接失败' } } }
+  const request = buildRequest({ ...config, provider: 'jev', baseUrl: 'https://api.example.com/v1', modelId: 'jev-1.13' }, [{ role: 'user', content: '连接失败' }], JSON.stringify({ model: 'ignored', state: 'ignored', questions }))
+  assert.equal(request.url, 'https://api.example.com/typesafe/v1/systemone')
+  assert.deepEqual(request.body, { model: 'jev-1.13', state: '连接失败', questions })
+  assert.equal(extractFinal('jev', { department: 'technical' }), '{"department":"technical"}')
+})
