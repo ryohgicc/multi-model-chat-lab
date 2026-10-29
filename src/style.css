@@ -108,3 +108,4 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .workspace-save-warning{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:1000;width:max-content;max-width:calc(100vw - 32px);padding:12px 16px;border:1px solid #d4aaa5;border-radius:8px;background:#fff7f5;color:#943e34;font-size:12px;line-height:1.6;box-shadow:0 4px 18px #0002}
 .settings-mode-switch{display:flex;gap:8px;margin-bottom:16px}.settings-mode-switch button{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer}.settings-mode-switch button.active{background:var(--ink);color:#fff}
 .mode-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.settings-page{margin:0 auto}

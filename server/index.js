@@ -61,7 +61,11 @@ app.post('/api/chat', async (req, res) => {
     if (!config.stream || config.provider === 'jev') {
       const data = await upstream.json()
       const text = extractFinal(config.provider, data)
-      if (!text) throw new Error('接口没有返回可显示的文本。')
+      if (!text) {
+        res.write(`${JSON.stringify({ error: '接口没有返回可显示的文本。', ...(req.body?.debug === true ? { debugResponse: data } : {}) })}\n`)
+        res.end()
+        return
+      }
       res.write(`${JSON.stringify({ delta: text })}\n`)
       const usage = extractUsage(config.provider, data)
       if (usage) res.write(`${JSON.stringify({ usage })}\n`)
